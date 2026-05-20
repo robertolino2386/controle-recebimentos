@@ -441,7 +441,7 @@
         selectAno.appendChild(option);
       });
 
-      selectMes.value = String(new Date().getMonth() + 1);
+      selectMes.value = "0";
       selectAno.value = String(anoAtual);
 
       selectMes.addEventListener("change", renderizar);
@@ -477,14 +477,19 @@
         }));
     }
 
-    function calcularResumo(dados) {
+    function calcularResumo() {
       const ano = Number(document.getElementById("ano").value);
       const dias = diasAteFinalAno(ano);
 
       let cielo = 0;
       let adiq = 0;
 
-      dados.forEach(item => {
+      const dadosAno = dadosGlobais.filter(item => {
+        const data = criarData(item.data);
+        return data.getFullYear() === ano;
+      });
+
+      dadosAno.forEach(item => {
         const valor = converterValor(item.valor);
         if (item.adquirencia === "Cielo") cielo += valor;
         if (item.adquirencia === "AdiqWL") adiq += valor;
@@ -605,7 +610,7 @@
 
     function renderizar() {
       const dadosFiltrados = filtrarDados();
-      const resumo = calcularResumo(dadosFiltrados);
+      const resu
 
       atualizarCards(resumo);
 
