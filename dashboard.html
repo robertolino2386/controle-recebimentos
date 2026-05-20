@@ -129,37 +129,15 @@ const URL =
 const CONTRATO_CIELO = 180000000;
 const CONTRATO_ADIQ = 360000000;
 
-let graficoLinha = null;
-
 async function carregarDados(){
 
   const resposta = await fetch(URL);
   const json = await resposta.json();
 
-  const dados = json.dados || [];
+  const dados = json.dados;
 
   criarFiltros(dados);
   atualizarDashboard(dados);
-
-}
-
-function converterValor(valor){
-
-  if(typeof valor === "number"){
-    return valor;
-  }
-
-  let texto = String(valor).trim();
-
-  texto = texto.replace("R$", "").trim();
-
-  if(texto.includes(",") && texto.includes(".")){
-    texto = texto.replace(/\./g, "").replace(",", ".");
-  } else if(texto.includes(",")){
-    texto = texto.replace(",", ".");
-  }
-
-  return Number(texto) || 0;
 
 }
 
@@ -184,9 +162,6 @@ function criarFiltros(dados){
   const selectMes = document.getElementById("mes");
   const selectAno = document.getElementById("ano");
 
-  selectMes.innerHTML = "";
-  selectAno.innerHTML = "";
-
   meses.forEach((mes,index)=>{
     const option = document.createElement("option");
     option.value = index;
@@ -194,17 +169,9 @@ function criarFiltros(dados){
     selectMes.appendChild(option);
   });
 
-  const anoAtual = new Date().getFullYear();
-
   const anos = [...new Set(
     dados.map(d=>new Date(d.data).getFullYear())
-  )].filter(ano=>!isNaN(ano));
-
-  if(!anos.includes(anoAtual)){
-    anos.push(anoAtual);
-  }
-
-  anos.sort((a,b)=>b-a);
+  )];
 
   anos.forEach(ano=>{
     const option = document.createElement("option");
@@ -212,9 +179,6 @@ function criarFiltros(dados){
     option.textContent = ano;
     selectAno.appendChild(option);
   });
-
-  selectMes.value = 0;
-  selectAno.value = anoAtual;
 
   selectMes.addEventListener("change",()=>atualizarDashboard(dados));
   selectAno.addEventListener("change",()=>atualizarDashboard(dados));
@@ -228,7 +192,7 @@ function atualizarDashboard(dados){
 
   const filtrado = dados.filter(item=>{
 
-    const data = new Date(item.data + "T00:00:00");
+    const data = new Date(item.data);
 
     const mesmoMes =
       mes === 0 ||
@@ -249,7 +213,7 @@ function atualizarDashboard(dados){
 
   filtrado.forEach(item=>{
 
-    const valor = converterValor(item.valor);
+    const valor = Number(item.valor);
 
     if(item.adquirencia === "Cielo"){
       cielo += valor;
@@ -270,24 +234,37 @@ function atualizarDashboard(dados){
 
   });
 
-  const pendenteCielo = Math.max(CONTRATO_CIELO - cielo, 0);
-  const pendenteAdiq = Math.max(CONTRATO_ADIQ - adiq, 0);
+  const pendenteCielo =
+    CONTRATO_CIELO - cielo;
+
+  const pendenteAdiq =
+    CONTRATO_ADIQ - adiq;
 
   const hoje = new Date();
-  const finalAno = new Date(hoje.getFullYear(),11,31);
 
-  const dias = Math.max(
-    Math.ceil((finalAno-hoje)/(1000*60*60*24)),
-    1
-  );
+  const finalAno =
+    new Date(hoje.getFullYear(),11,31);
 
-  document.getElementById("cieloAcumulado").textContent = moeda(cielo);
-  document.getElementById("cieloPendente").textContent = moeda(pendenteCielo);
-  document.getElementById("cieloMedia").textContent = moeda(pendenteCielo/dias);
+  const dias =
+    Math.ceil((finalAno-hoje)/(1000*60*60*24));
 
-  document.getElementById("adiqAcumulado").textContent = moeda(adiq);
-  document.getElementById("adiqPendente").textContent = moeda(pendenteAdiq);
-  document.getElementById("adiqMedia").textContent = moeda(pendenteAdiq/dias);
+  document.getElementById("cieloAcumulado")
+    .textContent = moeda(cielo);
+
+  document.getElementById("cieloPendente")
+    .textContent = moeda(pendenteCielo);
+
+  document.getElementById("cieloMedia")
+    .textContent = moeda(pendenteCielo/dias);
+
+  document.getElementById("adiqAcumulado")
+    .textContent = moeda(adiq);
+
+  document.getElementById("adiqPendente")
+    .textContent = moeda(pendenteAdiq);
+
+  document.getElementById("adiqMedia")
+    .textContent = moeda(pendenteAdiq/dias);
 
   criarGrafico(agrupado);
 
@@ -295,18 +272,20 @@ function atualizarDashboard(dados){
 
 function criarGrafico(agrupado){
 
-  const labels = Object.keys(agrupado).sort();
+  const labels = Object.keys(agrupado);
 
-  const cielo = labels.map(data=>agrupado[data].Cielo);
-  const adiq = labels.map(data=>agrupado[data].AdiqWL);
+  const cielo = labels.map(
+    data=>agrupado[data].Cielo
+  );
 
-  const ctx = document.getElementById("graficoLinha");
+  const adiq = labels.map(
+    data=>agrupado[data].AdiqWL
+  );
 
-  if(graficoLinha){
-    graficoLinha.destroy();
-  }
+  const ctx =
+    document.getElementById("graficoLinha");
 
-  graficoLinha = new Chart(ctx,{
+  new Chart(ctx,{
 
     type:"line",
 
