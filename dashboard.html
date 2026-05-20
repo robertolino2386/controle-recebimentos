@@ -441,7 +441,7 @@
         selectAno.appendChild(option);
       });
 
-      selectMes.value = "0";
+      selectMes.value = String(new Date().getMonth() + 1);
       selectAno.value = String(anoAtual);
 
       selectMes.addEventListener("change", renderizar);
@@ -505,8 +505,8 @@
         pendenteAdiq,
         mediaCielo: pendenteCielo / dias,
         mediaAdiq: pendenteAdiq / dias,
-        percCielo: CONTRATO_CIELO ? cielo / CONTRATO_CIELO * 100 : 0,
-        percAdiq: CONTRATO_ADIQ ? adiq / CONTRATO_ADIQ * 100 : 0
+        percCielo: CONTRATO_CIELO > 0 ? (cielo / CONTRATO_CIELO) * 100 : 0,
+        percAdiq: CONTRATO_ADIQ > 0 ? (adiq / CONTRATO_ADIQ) * 100 : 0
       };
     }
 
