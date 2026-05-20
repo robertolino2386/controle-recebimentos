@@ -213,7 +213,12 @@ function atualizarDashboard(dados){
 
   filtrado.forEach(item=>{
 
-    const valor = Number(item.valor);
+    const valor = parseFloat(
+  String(item.valor)
+    .replace("R$", "")
+    .replace(/\./g, "")
+    .replace(",", ".")
+) || 0;
 
     if(item.adquirencia === "Cielo"){
       cielo += valor;
