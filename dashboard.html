@@ -441,7 +441,7 @@
         selectAno.appendChild(option);
       });
 
-      selectMes.value = "0";
+      selectMes.value = String(new Date().getMonth() + 1);
       selectAno.value = String(anoAtual);
 
       selectMes.addEventListener("change", renderizar);
