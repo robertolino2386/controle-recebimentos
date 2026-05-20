@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Financeiro</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body{
+      margin:0;
+      padding:30px;
+      background:#07111F;
+      color:white;
+      font-family:Arial;
+    }
+
+    h1{
+      margin-bottom:25px;
+    }
+
+    .filtros{
+      display:flex;
+      gap:15px;
+      margin-bottom:25px;
+    }
+
+    select{
+      padding:10px;
+      border-radius:10px;
+      border:none;
+      background:#00285C;
+      color:white;
+      font-weight:bold;
+    }
+
+    .cards{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+      gap:20px;
+      margin-bottom:30px;
+    }
+
+    .card{
+      background:#0B1B32;
+      padding:20px;
+      border-radius:20px;
+      border:1px solid rgba(255,255,255,0.1);
+    }
+
+    .card h3{
+      color:#69A0D3;
+      margin-bottom:10px;
+      font-size:15px;
+    }
+
+    .valor{
+      font-size:28px;
+      font-weight:bold;
+    }
+
+    .grafico{
+      background:#0B1B32;
+      padding:20px;
+      border-radius:20px;
+      margin-top:20px;
+    }
+
+    canvas{
+      margin-top:20px;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Dashboard de Recebimentos</h1>
+
+<div class="filtros">
+  <select id="mes"></select>
+  <select id="ano"></select>
+</div>
+
+<div class="cards">
+
+  <div class="card">
+    <h3>Cielo Acumulado</h3>
+    <div class="valor" id="cieloAcumulado">R$ 0</div>
+  </div>
+
+  <div class="card">
+    <h3>Cielo Pendente</h3>
+    <div class="valor" id="cieloPendente">R$ 0</div>
+  </div>
+
+  <div class="card">
+    <h3>Média Dia Cielo</h3>
+    <div class="valor" id="cieloMedia">R$ 0</div>
+  </div>
+
+  <div class="card">
+    <h3>AdiqWL Acumulado</h3>
+    <div class="valor" id="adiqAcumulado">R$ 0</div>
+  </div>
+
+  <div class="card">
+    <h3>AdiqWL Pendente</h3>
+    <div class="valor" id="adiqPendente">R$ 0</div>
+  </div>
+
+  <div class="card">
+    <h3>Média Dia AdiqWL</h3>
+    <div class="valor" id="adiqMedia">R$ 0</div>
+  </div>
+
+</div>
+
+<div class="grafico">
+  <h2>Evolução Diária</h2>
+  <canvas id="graficoLinha"></canvas>
+</div>
+
+<script>
+
+const URL =
+"https://script.google.com/macros/s/AKfycbyc_4kOurPtIrIIpgJp8KCqvO0iSLMqXDufImiFC2tuM_N3Hb8JNC5jqphbepu6Oe5z/exec";
+
+const CONTRATO_CIELO = 180000000;
+const CONTRATO_ADIQ = 360000000;
+
+async function carregarDados(){
+
+  const resposta = await fetch(URL);
+  const json = await resposta.json();
+
+  const dados = json.dados;
+
+  criarFiltros(dados);
+  atualizarDashboard(dados);
+
+}
+
+function criarFiltros(dados){
+
+  const meses = [
+    "Todos",
+    "Janeiro",
+    "Fevereiro",
+    "Março",
+    "Abril",
+    "Maio",
+    "Junho",
+    "Julho",
+    "Agosto",
+    "Setembro",
+    "Outubro",
+    "Novembro",
+    "Dezembro"
+  ];
+
+  const selectMes = document.getElementById("mes");
+  const selectAno = document.getElementById("ano");
+
+  meses.forEach((mes,index)=>{
+    const option = document.createElement("option");
+    option.value = index;
+    option.textContent = mes;
+    selectMes.appendChild(option);
+  });
+
+  const anos = [...new Set(
+    dados.map(d=>new Date(d.data).getFullYear())
+  )];
+
+  anos.forEach(ano=>{
+    const option = document.createElement("option");
+    option.value = ano;
+    option.textContent = ano;
+    selectAno.appendChild(option);
+  });
+
+  selectMes.addEventListener("change",()=>atualizarDashboard(dados));
+  selectAno.addEventListener("change",()=>atualizarDashboard(dados));
+
+}
+
+function atualizarDashboard(dados){
+
+  const mes = Number(document.getElementById("mes").value);
+  const ano = Number(document.getElementById("ano").value);
+
+  const filtrado = dados.filter(item=>{
+
+    const data = new Date(item.data);
+
+    const mesmoMes =
+      mes === 0 ||
+      data.getMonth()+1 === mes;
+
+    const mesmoAno =
+      !ano ||
+      data.getFullYear() === ano;
+
+    return mesmoMes && mesmoAno;
+
+  });
+
+  let cielo = 0;
+  let adiq = 0;
+
+  const agrupado = {};
+
+  filtrado.forEach(item=>{
+
+    const valor = Number(item.valor);
+
+    if(item.adquirencia === "Cielo"){
+      cielo += valor;
+    }
+
+    if(item.adquirencia === "AdiqWL"){
+      adiq += valor;
+    }
+
+    if(!agrupado[item.data]){
+      agrupado[item.data] = {
+        Cielo:0,
+        AdiqWL:0
+      };
+    }
+
+    agrupado[item.data][item.adquirencia] += valor;
+
+  });
+
+  const pendenteCielo =
+    CONTRATO_CIELO - cielo;
+
+  const pendenteAdiq =
+    CONTRATO_ADIQ - adiq;
+
+  const hoje = new Date();
+
+  const finalAno =
+    new Date(hoje.getFullYear(),11,31);
+
+  const dias =
+    Math.ceil((finalAno-hoje)/(1000*60*60*24));
+
+  document.getElementById("cieloAcumulado")
+    .textContent = moeda(cielo);
+
+  document.getElementById("cieloPendente")
+    .textContent = moeda(pendenteCielo);
+
+  document.getElementById("cieloMedia")
+    .textContent = moeda(pendenteCielo/dias);
+
+  document.getElementById("adiqAcumulado")
+    .textContent = moeda(adiq);
+
+  document.getElementById("adiqPendente")
+    .textContent = moeda(pendenteAdiq);
+
+  document.getElementById("adiqMedia")
+    .textContent = moeda(pendenteAdiq/dias);
+
+  criarGrafico(agrupado);
+
+}
+
+function criarGrafico(agrupado){
+
+  const labels = Object.keys(agrupado);
+
+  const cielo = labels.map(
+    data=>agrupado[data].Cielo
+  );
+
+  const adiq = labels.map(
+    data=>agrupado[data].AdiqWL
+  );
+
+  const ctx =
+    document.getElementById("graficoLinha");
+
+  new Chart(ctx,{
+
+    type:"line",
+
+    data:{
+      labels:labels,
+
+      datasets:[
+        {
+          label:"Cielo",
+          data:cielo,
+          borderColor:"#69A0D3",
+          backgroundColor:"rgba(105,160,211,0.2)",
+          tension:0.4
+        },
+        {
+          label:"AdiqWL",
+          data:adiq,
+          borderColor:"#D6AE00",
+          backgroundColor:"rgba(214,174,0,0.2)",
+          tension:0.4
+        }
+      ]
+    },
+
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{
+          labels:{
+            color:"white"
+          }
+        }
+      },
+      scales:{
+        x:{
+          ticks:{
+            color:"white"
+          }
+        },
+        y:{
+          ticks:{
+            color:"white"
+          }
+        }
+      }
+    }
+
+  });
+
+}
+
+function moeda(valor){
+
+  return valor.toLocaleString(
+    "pt-BR",
+    {
+      style:"currency",
+      currency:"BRL"
+    }
+  );
+
+}
+
+carregarDados();
+
+</script>
+
+</body>
+</html>
