@@ -78,32 +78,38 @@
       padding: 28px 32px 40px;
     }
 
-    .linha-controle {
-      display: grid;
-      grid-template-columns: 1fr 260px 1fr;
-      gap: 34px;
-      align-items: end;
-      margin-bottom: 24px;
+    .barra-filtros {
+      display: flex;
+      justify-content: flex-end;
+      align-items: flex-end;
+      margin-bottom: 18px;
     }
 
     .filtros {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      align-items: center;
+      width: 260px;
     }
 
     .filtros label {
       font-size: 13px;
       color: var(--texto);
       font-weight: 700;
-      align-self: flex-start;
     }
 
     .filtros-grupo {
       display: flex;
       gap: 12px;
       width: 100%;
+    }
+
+    .linha-controle {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      align-items: stretch;
+      margin-bottom: 18px;
     }
 
     select, button {
@@ -175,7 +181,7 @@
 
     .graficos {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 18px;
       margin-top: 18px;
     }
@@ -220,7 +226,7 @@
     .resumo {
       margin-top: 18px;
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 14px;
     }
 
@@ -267,6 +273,14 @@
         text-align: center;
       }
 
+      .barra-filtros {
+        justify-content: stretch;
+      }
+
+      .filtros {
+        width: 100%;
+      }
+
       .linha-controle, .graficos, .resumo {
         grid-template-columns: 1fr;
       }
@@ -283,6 +297,16 @@
   <main class="container">
     <div id="status" class="status"></div>
 
+    <section class="barra-filtros">
+      <div class="filtros">
+        <label>Filtros</label>
+        <div class="filtros-grupo">
+          <select id="mes"></select>
+          <select id="ano"></select>
+        </div>
+      </div>
+    </section>
+
     <section class="linha-controle">
       <div class="card-kpi">
         <h2>Cielo</h2>
@@ -292,20 +316,20 @@
         <div class="kpi-linha"><strong>Média dia:</strong><span id="cieloMedia">R$ 0,00</span></div>
       </div>
 
-      <div class="filtros">
-        <label>Filtros</label>
-        <div class="filtros-grupo">
-          <select id="mes"></select>
-          <select id="ano"></select>
-        </div>
-      </div>
-
       <div class="card-kpi">
         <h2>AdiqWL</h2>
         <div class="kpi-linha"><strong>Contrato:</strong><span id="adiqContrato">R$ 0,00</span></div>
         <div class="kpi-linha"><strong>Acumulado:</strong><span id="adiqAcumulado">R$ 0,00</span></div>
         <div class="kpi-linha"><strong>Pendente:</strong><span class="dourado" id="adiqPendente">R$ 0,00</span></div>
         <div class="kpi-linha"><strong>Média dia:</strong><span id="adiqMedia">R$ 0,00</span></div>
+      </div>
+
+      <div class="card-kpi">
+        <h2>8B</h2>
+        <div class="kpi-linha"><strong>Contrato:</strong><span id="empresa8BContrato">R$ 0,00</span></div>
+        <div class="kpi-linha"><strong>Acumulado:</strong><span id="empresa8BAcumulado">R$ 0,00</span></div>
+        <div class="kpi-linha"><strong>Pendente:</strong><span class="dourado" id="empresa8BPendente">R$ 0,00</span></div>
+        <div class="kpi-linha"><strong>Média dia:</strong><span id="empresa8BMedia">R$ 0,00</span></div>
       </div>
     </section>
 
@@ -329,6 +353,16 @@
           <canvas id="graficoAdiq"></canvas>
         </div>
       </div>
+
+      <div class="grafico-card">
+        <div class="grafico-topo">
+          <h3>Evolução diária - 8B</h3>
+          <span class="tag">Recebido</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="grafico8B"></canvas>
+        </div>
+      </div>
     </section>
 
     <section class="resumo">
@@ -348,6 +382,10 @@
         <p>% realizado AdiqWL</p>
         <strong id="percAdiq">0,00%</strong>
       </div>
+      <div class="mini-card">
+        <p>% realizado 8B</p>
+        <strong id="perc8B">0,00%</strong>
+      </div>
     </section>
   </main>
 
@@ -356,10 +394,12 @@
 
     const CONTRATO_CIELO = 180000000;
     const CONTRATO_ADIQ = 360000000;
+    const CONTRATO_8B = 90000000;
 
     let dadosGlobais = [];
     let graficoCielo = null;
     let graficoAdiq = null;
+    let grafico8B = null;
 
     Chart.register(ChartDataLabels);
 
@@ -483,6 +523,7 @@
 
       let cielo = 0;
       let adiq = 0;
+      let empresa8B = 0;
 
       const dadosAno = dadosGlobais.filter(item => {
         const data = criarData(item.data);
@@ -493,26 +534,33 @@
         const valor = converterValor(item.valor);
         if (item.adquirencia === "Cielo") cielo += valor;
         if (item.adquirencia === "AdiqWL") adiq += valor;
+        if (item.adquirencia === "8B") empresa8B += valor;
       });
 
       const pendenteCielo = Math.max(CONTRATO_CIELO - cielo, 0);
       const pendenteAdiq = Math.max(CONTRATO_ADIQ - adiq, 0);
+      const pendente8B = Math.max(CONTRATO_8B - empresa8B, 0);
 
       return {
         cielo,
         adiq,
+        empresa8B,
         pendenteCielo,
         pendenteAdiq,
+        pendente8B,
         mediaCielo: pendenteCielo / dias,
         mediaAdiq: pendenteAdiq / dias,
+        media8B: pendente8B / dias,
         percCielo: CONTRATO_CIELO > 0 ? (cielo / CONTRATO_CIELO) * 100 : 0,
-        percAdiq: CONTRATO_ADIQ > 0 ? (adiq / CONTRATO_ADIQ) * 100 : 0
+        percAdiq: CONTRATO_ADIQ > 0 ? (adiq / CONTRATO_ADIQ) * 100 : 0,
+        perc8B: CONTRATO_8B > 0 ? (empresa8B / CONTRATO_8B) * 100 : 0
       };
     }
 
     function atualizarCards(resumo) {
       document.getElementById("cieloContrato").textContent = moeda(CONTRATO_CIELO);
       document.getElementById("adiqContrato").textContent = moeda(CONTRATO_ADIQ);
+      document.getElementById("empresa8BContrato").textContent = moeda(CONTRATO_8B);
 
       document.getElementById("cieloAcumulado").textContent = moeda(resumo.cielo);
       document.getElementById("cieloPendente").textContent = moeda(resumo.pendenteCielo);
@@ -522,10 +570,15 @@
       document.getElementById("adiqPendente").textContent = moeda(resumo.pendenteAdiq);
       document.getElementById("adiqMedia").textContent = moeda(resumo.mediaAdiq);
 
-      document.getElementById("totalRecebido").textContent = moeda(resumo.cielo + resumo.adiq);
-      document.getElementById("totalPendente").textContent = moeda(resumo.pendenteCielo + resumo.pendenteAdiq);
+      document.getElementById("empresa8BAcumulado").textContent = moeda(resumo.empresa8B);
+      document.getElementById("empresa8BPendente").textContent = moeda(resumo.pendente8B);
+      document.getElementById("empresa8BMedia").textContent = moeda(resumo.media8B);
+
+      document.getElementById("totalRecebido").textContent = moeda(resumo.cielo + resumo.adiq + resumo.empresa8B);
+      document.getElementById("totalPendente").textContent = moeda(resumo.pendenteCielo + resumo.pendenteAdiq + resumo.pendente8B);
       document.getElementById("percCielo").textContent = percentual(resumo.percCielo);
       document.getElementById("percAdiq").textContent = percentual(resumo.percAdiq);
+      document.getElementById("perc8B").textContent = percentual(resumo.perc8B);
     }
 
     function criarGrafico(canvasId, instanciaAtual, dados, titulo, cor) {
@@ -616,9 +669,11 @@
 
       const dadosCielo = agruparPorDia(dadosFiltrados, "Cielo");
       const dadosAdiq = agruparPorDia(dadosFiltrados, "AdiqWL");
+      const dados8B = agruparPorDia(dadosFiltrados, "8B");
 
       graficoCielo = criarGrafico("graficoCielo", graficoCielo, dadosCielo, "Cielo", "#1B5F7A");
       graficoAdiq = criarGrafico("graficoAdiq", graficoAdiq, dadosAdiq, "AdiqWL", "#1B5F7A");
+      grafico8B = criarGrafico("grafico8B", grafico8B, dados8B, "8B", "#1B5F7A");
 
       atualizarHorario();
     }
